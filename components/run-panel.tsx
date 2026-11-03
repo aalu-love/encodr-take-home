@@ -3,15 +3,17 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/client/api";
-import { jobKeys, useStartRun } from "@/lib/client/hooks";
+import { jobKeys, useRunResult, useStartRun } from "@/lib/client/hooks";
 import { useRunStream } from "@/lib/client/use-run-stream";
 import { type Job } from "@/lib/types";
 import { ProgressBar } from "@/components/progress-bar";
+import { ResultsView } from "@/components/results-view";
 import { StatusBadge } from "@/components/status-badge";
 
 /**
  * Start a job's encode run and watch it live over SSE. FAILED shows the error with a Retry, which
- * starts a fresh run. When the run finishes, the job list is refetched so its status updates.
+ * starts a fresh run. COMPLETED fetches the run's result and shows the results view. When the run
+ * finishes, the job list is refetched so its status updates.
  */
 export function RunPanel({ job }: { job: Job }) {
   const queryClient = useQueryClient();
@@ -23,7 +25,9 @@ export function RunPanel({ job }: { job: Job }) {
     void queryClient.invalidateQueries({ queryKey: jobKeys.all });
   });
 
+  const completed = stream.stage === "COMPLETED";
   const failed = stream.stage === "FAILED";
+  const result = useRunResult(job.latestRunId ?? null, completed);
   const active = hasRun && !stream.done && !stream.error;
   const busy = start.isPending || active;
 
@@ -68,7 +72,21 @@ export function RunPanel({ job }: { job: Job }) {
             <span className="text-sm tabular-nums text-neutral-600">{stream.progressPct}%</span>
           </div>
           <ProgressBar value={stream.progressPct} failed={failed} />
-          {stream.stage === "COMPLETED" && <p className="text-sm text-green-700">Encode finished.</p>}
+        </div>
+      )}
+
+      {completed && (
+        <div className="border-t border-neutral-200 pt-4">
+          {result.isPending && <p className="text-sm text-neutral-500">Loading results…</p>}
+          {result.isError && (
+            <p role="alert" className="text-sm text-red-600">
+              Couldn’t load the results.{" "}
+              <button onClick={() => result.refetch()} className="underline">
+                Retry
+              </button>
+            </p>
+          )}
+          {result.data?.result && <ResultsView result={result.data.result} />}
         </div>
       )}
 

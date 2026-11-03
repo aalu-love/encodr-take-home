@@ -133,6 +133,20 @@ describe("run lifecycle and derived job status", () => {
     expect((await retry.json()).runId).not.toBe(runId);
   });
 
+  it("exposes a result only once the run has completed, with renditions and warnings", async () => {
+    const jobId = await createJob(OK_URL);
+    const { runId } = await (await startRun(jobId)).json();
+
+    at(TOTAL_DURATION_MS / 2);
+    expect((await (await getRun(runId)).json()).result).toBeUndefined();
+
+    at(TOTAL_DURATION_MS);
+    const done = await (await getRun(runId)).json();
+    expect(done.result.durationSec).toBeGreaterThan(0);
+    expect(done.result.renditions.map((r: { label: string }) => r.label)).toEqual(["1080p", "720p", "480p"]);
+    expect(done.result.warnings.length).toBeGreaterThan(0);
+  });
+
   it("returns 404 for an unknown run id", async () => {
     expect((await getRun("r_missing")).status).toBe(404);
   });

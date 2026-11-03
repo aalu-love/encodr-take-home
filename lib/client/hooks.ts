@@ -46,3 +46,19 @@ export function useStartRun() {
 export function fetchRun(runId: string) {
   return api.get<EncodeRun>(`/api/runs/${runId}`);
 }
+
+export const runKeys = {
+  detail: (id: string) => ["runs", id] as const,
+};
+
+/**
+ * The finished run's result (renditions, duration, warnings), fetched from the server once the
+ * stream reports COMPLETED. The stream itself doesn't carry the result.
+ */
+export function useRunResult(runId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: runKeys.detail(runId ?? ""),
+    queryFn: () => fetchRun(runId ?? ""),
+    enabled: enabled && Boolean(runId),
+  });
+}

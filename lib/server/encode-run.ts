@@ -54,7 +54,7 @@ function simulatedResult(): EncodeResult {
       { label: "720p", width: 1280, height: 720, sizeMb: 22.7 },
       { label: "480p", width: 854, height: 480, sizeMb: 11.4 },
     ],
-    warnings: [],
+    warnings: ["Source audio was resampled to 48 kHz for the AAC renditions."],
   };
 }
 

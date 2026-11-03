@@ -1,0 +1,32 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e20] [cursor=pointer]
+  - alert [ref=e14]
+  - generic [ref=e24]:
+    - banner [ref=e25]:
+      - link "🎬 Encodr" [ref=e26] [cursor=pointer]:
+        - /url: /jobs
+      - generic [ref=e27]:
+        - generic [ref=e28]: demo@encodr.dev
+        - button "Sign out" [ref=e29]
+    - generic [ref=e52]:
+      - link "← All jobs" [ref=e53] [cursor=pointer]:
+        - /url: /jobs
+      - generic [ref=e54]:
+        - generic [ref=e55]:
+          - heading "clip.mp4" [level=1] [ref=e56]
+          - paragraph [ref=e57]: https://cdn.example.com/videos/clip.mp4
+        - generic [ref=e58]: RUNNING
+      - generic [ref=e59]:
+        - generic [ref=e60]:
+          - heading "Encode run" [level=2] [ref=e61]
+          - generic [ref=e62]:
+            - generic [ref=e65]: ● Live
+            - button "Start encode" [disabled] [ref=e63]
+        - generic [ref=e67]:
+          - generic [ref=e68]: DOWNLOADING
+          - generic [ref=e69]: 19%
+        - generic [ref=e72]:
+          - heading "Log" [level=3] [ref=e73]
+          - list [ref=e74]:
+            - listitem [ref=e75]: Waiting for a worker
+            - listitem [ref=e76]: Downloading source media
