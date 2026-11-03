@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { User } from "@/lib/types";
 
 // Mock auth for the exercise — no identity provider, no database.
@@ -18,11 +18,12 @@ const USERS: (User & { password: string })[] = [
   { id: "u_demo", email: "demo@encodr.dev", name: "Demo User", password: "password123" },
 ];
 
-// Signing secret: AUTH_SECRET if set, otherwise a random per-process secret. The fallback lives on
-// globalThis so Next's dev hot-reload doesn't regenerate it, which would invalidate every live token.
-const globalForAuth = globalThis as typeof globalThis & { __encodrAuthSecret?: string };
+// Signing secret: AUTH_SECRET if set and non-empty, otherwise a random per-process secret. The fallback
+// lives on globalThis so Next's dev hot-reload doesn't regenerate it, which would invalidate every live token.
+export const SECRET_GLOBAL_KEY = "__encodrAuthSecret";
+const globalForAuth = globalThis as typeof globalThis & { [SECRET_GLOBAL_KEY]?: string };
 const SECRET: string =
-  process.env.AUTH_SECRET ?? (globalForAuth.__encodrAuthSecret ??= randomBytes(32).toString("base64url"));
+  process.env.AUTH_SECRET || (globalForAuth[SECRET_GLOBAL_KEY] ??= randomBytes(32).toString("base64url"));
 
 type TokenType = "access" | "refresh";
 
@@ -33,9 +34,16 @@ interface Claims {
   exp: number; // seconds since epoch
 }
 
+/** Constant-time comparison. Hashing both sides first makes the lengths equal, so length doesn't leak either. */
+function passwordMatches(given: string, actual: string): boolean {
+  const a = createHash("sha256").update(given).digest();
+  const b = createHash("sha256").update(actual).digest();
+  return timingSafeEqual(a, b);
+}
+
 export function authenticate(email: string, password: string): User | null {
   const user = USERS.find((u) => u.email.toLowerCase() === email.toLowerCase());
-  if (!user || user.password !== password) return null;
+  if (!user || !passwordMatches(password, user.password)) return null;
   const { password: _pw, ...safe } = user;
   return safe;
 }

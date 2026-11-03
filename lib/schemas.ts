@@ -22,7 +22,7 @@ export const createJobSchema = z.object({
 export type CreateJobInput = z.infer<typeof createJobSchema>;
 
 export const loginSchema = z.object({
-  email: z.string().min(1, "Email is required").email("Enter a valid email"),
+  email: z.string().min(1, "Email is required").pipe(z.email("Enter a valid email")),
   password: z.string().min(1, "Password is required"),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
