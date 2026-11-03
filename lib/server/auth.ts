@@ -1,19 +1,37 @@
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { User } from "@/lib/types";
 
-// Mock auth for the exercise — no real identity provider, no database.
+// Mock auth for the exercise — no identity provider, no database.
 //
-// TODO(candidate): implement token issuance + verification.
-//  - issueTokens(): mint a SHORT-LIVED access token (~60s, so the client's refresh path is
-//    observable) and a longer-lived refresh token. A signed JWT or an opaque token you verify
-//    server-side both work.
-//  - verify the access token in getUserIdFromRequest(), and the refresh token in the refresh route.
-//  - Remember: native EventSource can't send an Authorization header — decide how the SSE route
-//    will authenticate (header via fetch-event-source? short-lived query token? cookie?).
+// Tokens are HMAC-SHA256 signed JSON claims (a minimal JWT-style format). Every token carries its
+// type ("access" or "refresh"), so one can never be used where the other is expected.
+//
+// SSE decision: the events stream uses the same `Authorization: Bearer` header as every other route.
+// The client reads it with @microsoft/fetch-event-source, which supports custom headers, so the
+// stream shares the same token-attach and 401-refresh path. Native EventSource can't set headers.
+
+export const ACCESS_TOKEN_TTL_SEC = 60;
+export const REFRESH_TOKEN_TTL_SEC = 7 * 24 * 60 * 60;
 
 // The one hard-coded user. Documented in the README.
 const USERS: (User & { password: string })[] = [
   { id: "u_demo", email: "demo@encodr.dev", name: "Demo User", password: "password123" },
 ];
+
+// Signing secret: AUTH_SECRET if set, otherwise a random per-process secret. The fallback lives on
+// globalThis so Next's dev hot-reload doesn't regenerate it, which would invalidate every live token.
+const globalForAuth = globalThis as typeof globalThis & { __encodrAuthSecret?: string };
+const SECRET: string =
+  process.env.AUTH_SECRET ?? (globalForAuth.__encodrAuthSecret ??= randomBytes(32).toString("base64url"));
+
+type TokenType = "access" | "refresh";
+
+interface Claims {
+  sub: string; // user id
+  typ: TokenType;
+  iat: number; // seconds since epoch
+  exp: number; // seconds since epoch
+}
 
 export function authenticate(email: string, password: string): User | null {
   const user = USERS.find((u) => u.email.toLowerCase() === email.toLowerCase());
@@ -29,24 +47,71 @@ export function findUser(id: string): User | null {
   return safe;
 }
 
-export function issueTokens(_userId: string): { accessToken: string; refreshToken: string } {
-  // TODO(candidate): mint real tokens.
-  throw new Error("Not implemented: issueTokens");
+function sign(body: string): string {
+  return createHmac("sha256", SECRET).update(body).digest("base64url");
 }
 
-export function issueAccessToken(_userId: string): string {
-  // TODO(candidate): mint a new short-lived access token from a valid refresh.
-  throw new Error("Not implemented: issueAccessToken");
+function mint(userId: string, typ: TokenType, ttlSec: number, nowMs: number): string {
+  const iat = Math.floor(nowMs / 1000);
+  const claims: Claims = { sub: userId, typ, iat, exp: iat + ttlSec };
+  const body = Buffer.from(JSON.stringify(claims)).toString("base64url");
+  return `${body}.${sign(body)}`;
 }
 
-/** Return the authenticated userId from the request, or null. */
-export function getUserIdFromRequest(_req: Request): string | null {
-  // TODO(candidate): read + verify the bearer (or query) token and return its subject.
-  return null;
+function isClaims(value: unknown): value is Claims {
+  if (typeof value !== "object" || value === null) return false;
+  const c = value as Record<string, unknown>;
+  return (
+    typeof c.sub === "string" &&
+    (c.typ === "access" || c.typ === "refresh") &&
+    typeof c.exp === "number"
+  );
+}
+
+/** Subject of a token that is well-formed, correctly signed, unexpired, of the expected type, and whose user exists. */
+function verify(token: string, expectedType: TokenType, nowMs: number): string | null {
+  const parts = token.split(".");
+  if (parts.length !== 2) return null;
+  const [body, sig] = parts;
+
+  // Constant-time comparison of the signature.
+  const expected = Buffer.from(sign(body), "base64url");
+  const given = Buffer.from(sig, "base64url");
+  if (given.length !== expected.length || !timingSafeEqual(given, expected)) return null;
+
+  let claims: unknown;
+  try {
+    claims = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
+  } catch {
+    return null;
+  }
+  if (!isClaims(claims)) return null;
+  if (claims.typ !== expectedType) return null;
+  if (claims.exp * 1000 <= nowMs) return null;
+  return findUser(claims.sub) ? claims.sub : null;
+}
+
+export function issueTokens(userId: string, nowMs: number = Date.now()): {
+  accessToken: string;
+  refreshToken: string;
+} {
+  return {
+    accessToken: issueAccessToken(userId, nowMs),
+    refreshToken: mint(userId, "refresh", REFRESH_TOKEN_TTL_SEC, nowMs),
+  };
+}
+
+export function issueAccessToken(userId: string, nowMs: number = Date.now()): string {
+  return mint(userId, "access", ACCESS_TOKEN_TTL_SEC, nowMs);
+}
+
+/** Return the authenticated userId from the `Authorization: Bearer <access token>` header, or null. */
+export function getUserIdFromRequest(req: Request, nowMs: number = Date.now()): string | null {
+  const match = req.headers.get("authorization")?.match(/^Bearer\s+(\S+)$/i);
+  return match ? verify(match[1], "access", nowMs) : null;
 }
 
 /** Verify a refresh token and return its subject (userId), or null. */
-export function verifyRefreshToken(_token: string): string | null {
-  // TODO(candidate): verify signature + expiry + type.
-  return null;
+export function verifyRefreshToken(token: string, nowMs: number = Date.now()): string | null {
+  return verify(token, "refresh", nowMs);
 }

@@ -1,6 +1,6 @@
-import { error } from "@/lib/server/http";
+import { error, withAuth } from "@/lib/server/http";
 
-// TODO(candidate): auth-guarded — start an encode run for { jobId } and return { runId } (201).
-export async function POST(_req: Request) {
-  return error(501, "Not implemented: POST /api/runs");
+// TODO(candidate): start an encode run for { jobId } and return { runId } (201). Auth guard is in place.
+export async function POST(req: Request) {
+  return withAuth(req, async () => error(501, "Not implemented: POST /api/runs"));
 }
