@@ -1,0 +1,23 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e20] [cursor=pointer]
+  - alert [ref=e14]
+  - generic [ref=e24]:
+    - banner [ref=e25]:
+      - link "🎬 Encodr" [ref=e26] [cursor=pointer]:
+        - /url: /jobs
+      - generic [ref=e27]:
+        - generic [ref=e28]: demo@encodr.dev
+        - button "Sign out" [ref=e29]
+    - generic [ref=e51]:
+      - link "← All jobs" [ref=e52] [cursor=pointer]:
+        - /url: /jobs
+      - generic [ref=e53]:
+        - generic [ref=e54]:
+          - heading "clip.mp4" [level=1] [ref=e55]
+          - paragraph [ref=e56]: https://cdn.example.com/videos/clip.mp4
+        - generic [ref=e57]: NEW
+      - generic [ref=e58]:
+        - generic [ref=e59]:
+          - heading "Encode run" [level=2] [ref=e60]
+          - button "Start encode" [ref=e62]
+        - paragraph [ref=e63]: No run yet.

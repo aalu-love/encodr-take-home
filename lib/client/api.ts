@@ -93,20 +93,26 @@ function forceLogout(): void {
   if (typeof window !== "undefined") window.dispatchEvent(new Event(AUTH_LOGOUT_EVENT));
 }
 
+/**
+ * A usable access token after a 401 on a request that was sent with `sentToken`, or null (after logging
+ * out) if the session can't be recovered. Shared by normal requests and the SSE stream.
+ */
+export async function recoverAccessToken(sentToken: string | null): Promise<string | null> {
+  const current = getAccessToken();
+  // Another request already refreshed since we sent this one: use the newer token, don't refresh again.
+  const fresh = current && current !== sentToken ? current : await refreshOnce();
+  if (!fresh) forceLogout();
+  return fresh;
+}
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const authed = options.auth !== false;
   const sentToken = authed ? getAccessToken() : null;
   let res = await fetch(path, buildInit(options, sentToken));
 
   if (authed && res.status === 401) {
-    // If the token changed since we sent this request, another request already refreshed it:
-    // retry with the newer token instead of refreshing again.
-    const current = getAccessToken();
-    const fresh = current && current !== sentToken ? current : await refreshOnce();
-    if (!fresh) {
-      forceLogout();
-      throw await parseError(res);
-    }
+    const fresh = await recoverAccessToken(sentToken);
+    if (!fresh) throw await parseError(res);
 
     // Retry exactly once. A second 401 means the session is unrecoverable.
     res = await fetch(path, buildInit(options, fresh));

@@ -1,4 +1,4 @@
-import { type EncodeResult, type EncodeRun, type Stage } from "@/lib/types";
+import { type EncodeResult, type EncodeRun, type RunEvent, type Stage } from "@/lib/types";
 
 // Pure encode-run state machine. No clock, no store, no I/O: everything is derived from
 // (startedAt, sourceUrl, now), so the timeline can be unit-tested by passing in times directly.
@@ -102,4 +102,30 @@ function toEncodeRun(record: RunRecord, state: RunState): EncodeRun {
 export function computeRun(record: RunRecord, now: number = Date.now()): EncodeRun {
   const elapsedMs = Math.max(0, now - record.startedAt);
   return toEncodeRun(record, deriveState(elapsedMs, record.sourceUrl));
+}
+
+/** Human-readable log line for each active stage. */
+const STAGE_MESSAGES: Record<ActiveStage, string> = {
+  QUEUED: "Waiting for a worker",
+  DOWNLOADING: "Downloading source media",
+  PROBING: "Probing streams and metadata",
+  TRANSCODING: "Transcoding renditions",
+  PACKAGING: "Packaging output",
+};
+
+/** The SSE payload for a run at `now`: stage, progress, a log message, and the error if it failed. */
+export function toRunEvent(record: RunRecord, now: number = Date.now()): RunEvent {
+  const run = computeRun(record, now);
+  const message =
+    run.stage === "FAILED"
+      ? (run.error ?? "Encode failed")
+      : run.stage === "COMPLETED"
+        ? "Encode complete"
+        : STAGE_MESSAGES[run.stage];
+  return {
+    stage: run.stage,
+    progressPct: run.progressPct,
+    message,
+    ...(run.error ? { error: run.error } : {}),
+  };
 }

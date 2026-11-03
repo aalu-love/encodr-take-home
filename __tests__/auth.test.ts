@@ -228,6 +228,6 @@ describe("auth routes", () => {
       }),
       ctx,
     );
-    expect(authed.status).toBe(501); // stream not built until phase 6; the guard passed
+    expect(authed.status).toBe(404); // "r_x" doesn't exist; the guard passed the request through
   });
 });
