@@ -1,11 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { type EncodeRun, type Job } from "@/lib/types";
+import { type EncodeRun, type Job, type JobStatus, isTerminalStage } from "@/lib/types";
 import { computeRun, FAIL_URL, type RunRecord } from "@/lib/server/encode-run";
 
 // In-memory store. A single Node process in `next dev`, so module-level Maps are fine.
-//
-// The job/run CRUD below is provided. The interesting part — turning an in-flight run into a
-// live stage + progress over ~20–40s — is left for you.
 
 const jobs = new Map<string, Job>();
 const runs = new Map<string, RunRecord>();
@@ -13,14 +10,29 @@ const runs = new Map<string, RunRecord>();
 // The run state machine lives in encode-run.ts (pure, unit-tested). Re-exported so existing imports keep working.
 export { FAIL_URL };
 
-// --- job/run CRUD (provided) ---
+/**
+ * A job's status is derived from its latest run at read time, so it can't drift from the run.
+ * The stored `status` is only the initial NEW value.
+ */
+function withDerivedStatus(job: Job, now: number = Date.now()): Job {
+  const record = job.latestRunId ? runs.get(job.latestRunId) : undefined;
+  if (!record) return { ...job, status: "NEW" };
 
-export function listJobs(): Job[] {
-  return [...jobs.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const { stage } = computeRun(record, now);
+  const status: JobStatus =
+    stage === "COMPLETED" ? "COMPLETED" : stage === "FAILED" ? "FAILED" : "RUNNING";
+  return { ...job, status };
 }
 
-export function getJob(id: string): Job | null {
-  return jobs.get(id) ?? null;
+export function listJobs(now: number = Date.now()): Job[] {
+  return [...jobs.values()]
+    .map((job) => withDerivedStatus(job, now))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export function getJob(id: string, now: number = Date.now()): Job | null {
+  const job = jobs.get(id);
+  return job ? withDerivedStatus(job, now) : null;
 }
 
 export function createJob(input: { sourceUrl: string; title?: string }): Job {
@@ -47,6 +59,13 @@ function deriveTitle(sourceUrl: string): string {
   }
 }
 
+/** True if the job exists and its most recent run hasn't reached a terminal stage yet. */
+export function hasActiveRun(jobId: string, now: number = Date.now()): boolean {
+  const latestId = jobs.get(jobId)?.latestRunId;
+  const record = latestId ? runs.get(latestId) : undefined;
+  return record !== undefined && !isTerminalStage(computeRun(record, now).stage);
+}
+
 export function startRun(jobId: string): RunRecord | null {
   const job = jobs.get(jobId);
   if (!job) return null;
@@ -58,8 +77,6 @@ export function startRun(jobId: string): RunRecord | null {
   };
   runs.set(record.id, record);
   job.latestRunId = record.id;
-  // TODO(candidate): you'll probably also want the job's status in listJobs()/getJob() to reflect
-  // its latest run (RUNNING / COMPLETED / FAILED). Decide where that derivation lives.
   return record;
 }
 

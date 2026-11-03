@@ -5,15 +5,10 @@ import Link from "next/link";
 import { useJob } from "@/lib/client/hooks";
 import { ApiError } from "@/lib/client/api";
 import { StatusBadge } from "@/components/status-badge";
+import { RunPanel } from "@/components/run-panel";
 
-// TODO(candidate): this is the core screen. Build:
-//  - a "Start encode" action (POST /api/runs) that kicks off a run,
-//  - a live progress indicator (stage + %) driven by the SSE stream (useRunStream),
-//  - a streaming log of messages,
-//  - a clear FAILED state with a Retry,
-//  - a results view once the run COMPLETES (renditions / duration / warnings).
-// Make sure the stream is cleaned up on unmount/navigation, and the job's status in the list
-// reflects the terminal state.
+// Still to build (phases 6–7): the live SSE progress stream (replacing the polling in RunPanel),
+// a streaming log, and the results view on COMPLETED.
 export default function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const jobQuery = useJob(id);
@@ -52,9 +47,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         <StatusBadge value={job.status} />
       </div>
 
-      <p className="rounded-md border border-dashed border-neutral-300 p-4 text-sm text-neutral-500">
-        TODO(candidate): run controls, live progress (SSE), log, failure/retry, and results view.
-      </p>
+      <RunPanel job={job} />
     </div>
   );
 }

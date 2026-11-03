@@ -1,0 +1,32 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e20] [cursor=pointer]
+  - alert [ref=e14]
+  - generic [ref=e24]:
+    - banner [ref=e25]:
+      - link "🎬 Encodr" [ref=e26] [cursor=pointer]:
+        - /url: /jobs
+      - generic [ref=e27]:
+        - generic [ref=e28]: demo@encodr.dev
+        - button "Sign out" [ref=e29]
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - heading "New encode job" [level=1] [ref=e32]
+        - generic [ref=e33]:
+          - generic [ref=e34]:
+            - generic [ref=e35]: Source URL
+            - textbox "Source URL" [ref=e36]:
+              - /placeholder: https://cdn.example.com/videos/clip.mp4
+          - generic [ref=e37]:
+            - generic [ref=e38]: Title (optional)
+            - textbox "Title (optional)" [ref=e39]
+          - button "Create job" [ref=e40]
+      - generic [ref=e41]:
+        - heading "Jobs" [level=2] [ref=e42]
+        - list [ref=e44]:
+          - listitem [ref=e45]:
+            - link "corrupt.mp4 https://cdn.example.com/videos/corrupt.mp4 NEW" [ref=e46] [cursor=pointer]:
+              - /url: /jobs/j_a8b5e516
+              - generic [ref=e47]:
+                - paragraph [ref=e48]: corrupt.mp4
+                - paragraph [ref=e49]: https://cdn.example.com/videos/corrupt.mp4
+              - generic [ref=e50]: NEW
