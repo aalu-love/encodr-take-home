@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { type EncodeRun, type Job } from "@/lib/types";
+import { computeRun, FAIL_URL, type RunRecord } from "@/lib/server/encode-run";
 
 // In-memory store. A single Node process in `next dev`, so module-level Maps are fine.
 //
@@ -9,27 +10,8 @@ import { type EncodeRun, type Job } from "@/lib/types";
 const jobs = new Map<string, Job>();
 const runs = new Map<string, RunRecord>();
 
-interface RunRecord {
-  id: string;
-  jobId: string;
-  sourceUrl: string;
-  startedAt: number; // epoch ms
-}
-
-/** The "magic" source URL that should always fail partway, so reviewers can see error handling. */
-export const FAIL_URL = "https://cdn.example.com/videos/corrupt.mp4";
-
-/**
- * TODO(candidate): compute a run's current state.
- *
- * Given a run record and a clock, derive { stage, progressPct, error?, result? }. Suggested approach:
- * model it as a pure function of elapsed time = (now - startedAt). Walk QUEUED → DOWNLOADING →
- * PROBING → TRANSCODING → PACKAGING over ~30s, then COMPLETED. If sourceUrl === FAIL_URL, end in
- * FAILED partway through. Keeping it pure (taking `now`) makes it easy to unit-test.
- */
-export function computeRun(_record: RunRecord, _now: number = Date.now()): EncodeRun {
-  throw new Error("Not implemented: computeRun");
-}
+// The run state machine lives in encode-run.ts (pure, unit-tested). Re-exported so existing imports keep working.
+export { FAIL_URL };
 
 // --- job/run CRUD (provided) ---
 
