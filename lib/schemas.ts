@@ -21,6 +21,7 @@ export const sourceUrlSchema = z
   .string()
   .trim()
   .min(1, "Source URL is required")
+  .max(2048, "Source URL is too long (2048 characters at most)")
   .refine(isMediaHttpUrl, {
     message: "Enter a full http(s) link to a media file, e.g. https://cdn.example.com/videos/clip.mp4",
   });

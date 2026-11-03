@@ -27,10 +27,18 @@ export function validationError(
   return json({ detail: "Invalid input", fieldErrors }, 400);
 }
 
-/** Parsed JSON body, or undefined if the body isn't valid JSON (schema validation then rejects it). */
+/** Largest JSON body we'll parse. Every request body in this API is a small form payload. */
+export const MAX_JSON_BODY_BYTES = 16 * 1024;
+
+/**
+ * Parsed JSON body. Returns undefined if the body is invalid JSON or larger than MAX_JSON_BODY_BYTES,
+ * so schema validation rejects it with a 400 instead of parsing an unbounded payload.
+ */
 export async function readJsonBody(req: Request): Promise<unknown> {
   try {
-    return await req.json();
+    const text = await req.text();
+    if (new TextEncoder().encode(text).length > MAX_JSON_BODY_BYTES) return undefined;
+    return JSON.parse(text);
   } catch {
     return undefined;
   }

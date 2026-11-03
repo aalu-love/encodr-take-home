@@ -20,6 +20,13 @@ describe("source URL validation", () => {
     expect(result.success).toBe(false);
   });
 
+  it("rejects a URL longer than 2048 characters, even if it is otherwise valid", () => {
+    const long = `https://cdn.example.com/${"a".repeat(2100)}.mp4`;
+    const result = sourceUrlSchema.safeParse(long);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toMatch(/too long/);
+  });
+
   it("reports 'Source URL is required' for an empty value, and trims whitespace before checking", () => {
     const empty = sourceUrlSchema.safeParse("   ");
     expect(empty.success).toBe(false);

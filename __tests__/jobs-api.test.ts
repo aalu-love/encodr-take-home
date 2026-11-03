@@ -40,6 +40,19 @@ describe("jobs API", () => {
     expect(body.fieldErrors.sourceUrl).toBeTruthy();
   });
 
+  it("rejects an oversized body with a 400 instead of parsing it", async () => {
+    // A valid job plus a 20KB unused field: the schema alone would accept it, so only the size limit rejects it.
+    const huge = JSON.stringify({ sourceUrl: CLIP, padding: "x".repeat(20 * 1024) });
+    const res = await createPost(
+      new Request("http://localhost/api/jobs", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...authHeader() },
+        body: huge,
+      }),
+    );
+    expect(res.status).toBe(400);
+  });
+
   it("returns 400 for a body that isn't JSON", async () => {
     const res = await createPost(
       new Request("http://localhost/api/jobs", {
