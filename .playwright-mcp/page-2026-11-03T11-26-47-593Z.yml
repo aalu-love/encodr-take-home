@@ -1,0 +1,12 @@
+- generic [ref=e2]:
+  - heading "🎬 Encodr" [level=1] [ref=e3]
+  - paragraph [ref=e4]: Sign in to manage your encode jobs.
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e7]: Email
+      - textbox [ref=e8]
+    - generic [ref=e9]:
+      - generic [ref=e10]: Password
+      - textbox [ref=e11]
+    - button "Sign in" [ref=e12]
+  - paragraph [ref=e13]: "Demo login: demo@encodr.dev / password123"
