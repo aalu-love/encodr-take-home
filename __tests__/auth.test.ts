@@ -206,7 +206,7 @@ describe("auth routes", () => {
 
     const { accessToken } = issueTokens(DEMO_ID);
     const authed = await jobsGet(bearer(accessToken));
-    expect(authed.status).toBe(501); // handler is still a stub; the guard let the request through
+    expect(authed.status).toBe(200); // the guard let the request through to the jobs list
   });
 
   it("the SSE events stream requires the Authorization header; a token in the query string is ignored", async () => {

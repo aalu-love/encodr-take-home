@@ -3,6 +3,7 @@
 import { use } from "react";
 import Link from "next/link";
 import { useJob } from "@/lib/client/hooks";
+import { ApiError } from "@/lib/client/api";
 import { StatusBadge } from "@/components/status-badge";
 
 // TODO(candidate): this is the core screen. Build:
@@ -19,9 +20,15 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
   if (jobQuery.isLoading) return <p className="text-sm text-neutral-500">Loading job…</p>;
   if (jobQuery.isError || !jobQuery.data) {
+    const notFound = jobQuery.error instanceof ApiError && jobQuery.error.status === 404;
     return (
       <div className="text-sm text-red-600">
-        Job not found.{" "}
+        {notFound ? "Job not found." : "Couldn’t load this job."}{" "}
+        {!notFound && (
+          <button onClick={() => jobQuery.refetch()} className="underline">
+            Retry
+          </button>
+        )}{" "}
         <Link href="/jobs" className="underline">
           Back to jobs
         </Link>

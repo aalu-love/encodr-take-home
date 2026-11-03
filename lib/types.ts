@@ -33,6 +33,18 @@ export interface User {
   name: string;
 }
 
+/** POST /api/auth/login response. */
+export interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: User;
+}
+
+/** POST /api/auth/refresh response. */
+export interface RefreshResponse {
+  accessToken: string;
+}
+
 export interface Job {
   id: string;
   title: string;

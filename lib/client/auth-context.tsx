@@ -10,9 +10,16 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import type { User } from "@/lib/types";
-import { AUTH_LOGOUT_EVENT } from "@/lib/client/api";
-import { clearTokens, getStoredUser, hydrateTokens } from "@/lib/client/token-store";
+import { useQueryClient } from "@tanstack/react-query";
+import type { LoginResponse, User } from "@/lib/types";
+import { api, AUTH_LOGOUT_EVENT } from "@/lib/client/api";
+import {
+  clearTokens,
+  getStoredUser,
+  hydrateTokens,
+  setStoredUser,
+  setTokens,
+} from "@/lib/client/token-store";
 
 interface AuthContextValue {
   user: User | null;
@@ -26,6 +33,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -37,21 +45,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     clearTokens();
+    // Drop cached server data so the next user on this browser never sees the previous user's jobs.
+    queryClient.clear();
     setUser(null);
     router.replace("/signin");
-  }, [router]);
+  }, [router, queryClient]);
 
-  // If apiFetch can't recover auth it dispatches AUTH_LOGOUT_EVENT — react globally.
+  // If the API client can't recover the session it dispatches AUTH_LOGOUT_EVENT — react globally.
   useEffect(() => {
     const handler = () => logout();
     window.addEventListener(AUTH_LOGOUT_EVENT, handler);
     return () => window.removeEventListener(AUTH_LOGOUT_EVENT, handler);
   }, [logout]);
 
-  const login = useCallback(async (_email: string, _password: string) => {
-    // TODO(candidate): POST /api/auth/login, store the returned tokens + user
-    // (see lib/client/token-store.ts), and set the user in state.
-    throw new Error("Not implemented: login");
+  const login = useCallback(async (email: string, password: string) => {
+    // Throws ApiError with the server's message (e.g. "Invalid email or password") on failure.
+    const data = await api.postPublic<LoginResponse>("/api/auth/login", { email, password });
+    setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+    setStoredUser(data.user);
+    setUser(data.user);
   }, []);
 
   const value = useMemo<AuthContextValue>(
